@@ -27,11 +27,11 @@ $Banner = @"
   │ ██╔══██║██╔═══╝ ██╔═══╝    ██║       ██║╚██╔╝██║██║  ██║██║  ██║         │
   │ ██║  ██║██║     ██║        ██║       ██║ ╚═╝ ██║╚██████╔╝██████╔╝         │
   │ ╚═╝  ╚═╝╚═╝     ╚═╝        ╚═╝       ╚═╝     ╚═╝ ╚═════╝ ╚═════╝          │
-  │  █████╗ ███╗   ██╗█████╗ ██╗    ██╗███████╗███████╗██████╗                 │
-  │ ██╔══██╗████╗  ██║██╔══██╗██║   ██║╚══███╔╝██╔════╝██╔══██╗                │
-  │ ███████║██╔██╗ ██║███████║██║   ██║  ███╔╝ █████╗  ██████╔╝                │
-  │ ██╔══██║██║╚██╗██║██╔══██║██║   ██║ ███╔╝  ██╔══╝  ██╔══██╗                │
-  │ ██║  ██║██║ ╚████║██║  ██║█████ ██║███████╗███████╗██║  ██║                │
+  │  █████╗ ███╗   ██╗█████╗ ██╗  ██╗███████╗███████╗██████╗                 │
+  │ ██╔══██╗████╗  ██║██╔══██╗██║  ██║╚══███╔╝██╔════╝██╔══██╗                │
+  │ ███████║██╔██╗ ██║███████║██║  ██║  ███╔╝ █████╗  ██████╔╝                │
+  │ ██╔══██║██║╚██╗██║██╔══██║██║  ██║ ███╔╝  ██╔══╝  ██╔══██╗                │
+  │ ██║  ██║██║ ╚████║██║  ██║███████║███████╗███████╗██║  ██║                │
   │ ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═╝                │
   └───────────────────────────────────────────────────────────────────────────┘
 
@@ -214,13 +214,13 @@ $script:cheatDomains = @(
     "gofile.io", "file.io", "transfer.sh", "pixeldrain.com",
     "liquidbounce.net", "fdpclient.cn", "aristois.net",
     "rusherhack.org", "futureclient.net", "konasclient.com", "sigma-client.com",
-    "tenacity.dev", "moonclient.xyz",
+    "tenacity.dev", "moonclient.xyz", "augustusclient.com", "azuraclient.xyz",
     "entropy.club", "drip.gg", "slinky.gg", "haruclient.com", "antic.rip",
-    "novoware.eu", "hellclient.eu", "cyde.xyz", "flux.gg",
+    "novowareclient.com", "hellclient.xyz", "cyde.xyz", "flux.gg",
     "thevaultofficial.vercel.app", "opai.club", "22qqclient.com",
     "pandaware.vip", "skilledclient.xyz",
     "impactclient.net", "wurstclient.net", "bleachhack.org",
-    "mathaxclient.xyz", "meteorclient.com", "thunderhack.net"
+    "mathaxclient.xyz", "meteorhack.com", "thunderhack.net"
 )
 
 $script:flaggedIdentifiers = @(
@@ -1702,10 +1702,29 @@ function Resolve-ModrinthHash {
     $cached = Get-CachedResult -Hash $Sha1 -Source "modrinth"
     if ($cached) { return $cached }
     try {
-        $headers = @{ "User-Agent" = "APPT-ModAnalyzer/3.0" }
+        $headers = @{ "User-Agent" = "APPT-ModAnalyzer/3.0 (github.com/Poxy-1/ApptModAnalyzer)" }
         $resp = Invoke-RestMethod -Uri "https://api.modrinth.com/v2/version_file/$Sha1" -Headers $headers -TimeoutSec 2 -ErrorAction SilentlyContinue
         if ($resp.project_id) {
-            $data = @{ Name = $resp.project_id; Slug = $resp.project_id; Verified = $true }
+            $projName = $resp.project_id
+            try {
+                $p = Invoke-RestMethod -Uri "https://api.modrinth.com/v2/project/$($resp.project_id)" -Headers $headers -TimeoutSec 2 -ErrorAction SilentlyContinue
+                if ($p.title) { $projName = $p.title }
+            } catch { }
+            $data = @{ Name = $projName; Slug = $resp.project_id; Verified = $true }
+            Save-CachedResult -Hash $Sha1 -Source "modrinth" -Data $data
+            return $data
+        }
+    } catch { }
+    try {
+        $headers = @{ "User-Agent" = "APPT-ModAnalyzer/3.0 (github.com/Poxy-1/ApptModAnalyzer)" }
+        $resp512 = Invoke-RestMethod -Uri "https://api.modrinth.com/v2/version_file/$Sha512?algorithm=sha512" -Headers $headers -TimeoutSec 2 -ErrorAction SilentlyContinue
+        if ($resp512.project_id) {
+            $projName = $resp512.project_id
+            try {
+                $p = Invoke-RestMethod -Uri "https://api.modrinth.com/v2/project/$($resp512.project_id)" -Headers $headers -TimeoutSec 2 -ErrorAction SilentlyContinue
+                if ($p.title) { $projName = $p.title }
+            } catch { }
+            $data = @{ Name = $projName; Slug = $resp512.project_id; Verified = $true }
             Save-CachedResult -Hash $Sha1 -Source "modrinth" -Data $data
             return $data
         }
@@ -1725,6 +1744,14 @@ function Resolve-MegabaseHash {
             return $data
         }
     } catch { }
+    try {
+        $resp2 = Invoke-RestMethod -Uri "https://megabase.vercel.app/api/query?hash=$Hash" -TimeoutSec 2 -ErrorAction SilentlyContinue
+        if ($resp2.name) {
+            $data = @{ Name = $resp2.name; Verified = $true }
+            Save-CachedResult -Hash $Hash -Source "megabase" -Data $data
+            return $data
+        }
+    } catch { }
     return @{ Name = $null; Verified = $false }
 }
 
@@ -1735,34 +1762,18 @@ foreach ($jar in $jarFiles) {
     Show-AnalysisProgress -Current $idx -Total $totalFiles -FileName $jar.Name -Timer $timer
 
     $verifiedName = $null
-    $archiveDataTemp = Read-ArchiveData -Target $jar.FullName
-    $identTemp = Get-ModIdentity -ArchiveData $archiveDataTemp
-    if ($identTemp.ModId) {
-        foreach ($kn in $script:knownModIdentities.Keys) {
-            if ($identTemp.ModId -eq $script:knownModIdentities[$kn].id) {
-                $verifiedName = "$($identTemp.Name) [$($identTemp.Loader)]"
-                break
+    $hashes = Get-FileDigest -Target $jar.FullName
+
+    if ($hashes.SHA1) {
+        $modrinthData = Resolve-ModrinthHash -Sha1 $hashes.SHA1 -Sha512 $hashes.SHA512
+        if ($modrinthData.Verified) {
+            $verifiedName = $modrinthData.Name
+        } else {
+            $megabaseData = Resolve-MegabaseHash -Hash $hashes.SHA1
+            if ($megabaseData.Verified) {
+                $verifiedName = $megabaseData.Name
             }
         }
-    }
-
-    if (-not $verifiedName) {
-        $hashes = Get-FileDigest -Target $jar.FullName
-        if ($hashes.SHA1) {
-            $modrinthData = Resolve-ModrinthHash -Sha1 $hashes.SHA1 -Sha512 $hashes.SHA512
-            if ($modrinthData.Verified) {
-                $verifiedName = $modrinthData.Name
-            } else {
-                $megabaseData = Resolve-MegabaseHash -Hash $hashes.SHA1
-                if ($megabaseData.Verified) {
-                    $verifiedName = $megabaseData.Name
-                }
-            }
-        }
-    }
-
-    if (-not $verifiedName -and $identTemp.Name) {
-        $verifiedName = "$($identTemp.Name) [$($identTemp.Loader)]"
     }
 
     if ($verifiedName) {
