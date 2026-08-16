@@ -214,13 +214,13 @@ $script:cheatDomains = @(
     "gofile.io", "file.io", "transfer.sh", "pixeldrain.com",
     "liquidbounce.net", "fdpclient.cn", "aristois.net",
     "rusherhack.org", "futureclient.net", "konasclient.com", "sigma-client.com",
-    "tenacity.dev", "moonclient.xyz", "augustusclient.com", "azuraclient.xyz",
+    "tenacity.dev", "moonclient.xyz",
     "entropy.club", "drip.gg", "slinky.gg", "haruclient.com", "antic.rip",
-    "novowareclient.com", "hellclient.xyz", "cyde.xyz", "flux.gg",
+    "novoware.eu", "hellclient.eu", "cyde.xyz", "flux.gg",
     "thevaultofficial.vercel.app", "opai.club", "22qqclient.com",
     "pandaware.vip", "skilledclient.xyz",
     "impactclient.net", "wurstclient.net", "bleachhack.org",
-    "mathaxclient.xyz", "meteorhack.com", "thunderhack.net"
+    "mathaxclient.xyz", "meteorclient.com", "thunderhack.net"
 )
 
 $script:flaggedIdentifiers = @(
