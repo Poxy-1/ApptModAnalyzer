@@ -361,7 +361,10 @@ public static class FastScanner {
         "sakurwa/client", "zoomies/client",
         "argonclient", "cwclient", "cwhack",
         "flashcrystal", "herosanchor", "hcscrc",
-        "clientsidedcrystals", "airanchormacro"
+        "clientsidedcrystals", "airanchormacro",
+        "slinky.dll", "drip.dll", "kura.dll", "vape.dll",
+        "wholesome.dll", "speckey.dll", "breeze.dll",
+        "itami.dll", "entropy.dll", "dream.dll", "slap.dll"
     };
 
     private static readonly string[] CheatConfigKeywords = new string[] {
@@ -381,12 +384,15 @@ public static class FastScanner {
         "\"autodisconnect\":", "\"holetp\":", "\"autoeat\":", "\"autopearl\":",
         "\"automine\":", "\"backtrack\":", "\"packetfly\":", "\"blink\":",
         "\"antivoid\":", "\"stashfinder\":", "\"pearlclip\":", "\"burrow\":",
+        "\"windcharge\":", "\"macesmash\":", "\"autocrafter\":", "\"breezerod\":",
         "[Module] Scaffold", "[Module] Speed", "[Module] Flight",
         "[Module] NoFall", "[Module] ESP", "[Module] Tracers",
         "[Module] Nuker", "[Module] Disabler", "[Module] Freecam",
         "[Module] ShieldBreaker", "[Module] AutoPot", "[Module] AutoArmor",
         "[Module] AutoDoubleHand", "[Module] MaceSwap", "[Module] StunSlam",
-        "[Module] TargetStrafe", "[Module] BackTrack", "[Module] PacketMine"
+        "[Module] TargetStrafe", "[Module] BackTrack", "[Module] PacketMine",
+        "[Module] WindCharge", "[Module] AutoAnchor", "[Module] GrimDisabler",
+        "[Module] VulcanDisabler", "[Module] PolarDisabler", "[Module] MatrixDisabler"
     };
 
     private static readonly string[] MixinHandlerSignatures = new string[] {
@@ -494,14 +500,19 @@ public static class FastScanner {
             long maxAddr = 0x7FFFFFFF0000;
             long currentAddr = 0;
             byte[] buffer = new byte[131072];
+            int regionCount = 0;
+            int maxRegions = 50000;
+            var scanTimer = System.Diagnostics.Stopwatch.StartNew();
 
             while (currentAddr < maxAddr) {
+                if (regionCount++ > maxRegions || scanTimer.ElapsedMilliseconds > 30000) break;
                 MEMORY_BASIC_INFORMATION mbi;
                 int res = VirtualQueryEx(hProcess, (IntPtr)currentAddr, out mbi, (uint)Marshal.SizeOf(typeof(MEMORY_BASIC_INFORMATION)));
                 if (res == 0) break;
 
                 long baseAddr = mbi.BaseAddress.ToInt64();
                 long regionSize = mbi.RegionSize.ToInt64();
+                if (regionSize <= 0) { currentAddr += 65536; continue; }
 
                 if (mbi.Type == 0x40000 || mbi.Type == 0x1000000) {
                     if (mbi.Type == 0x1000000 && mbi.BaseAddress == mbi.AllocationBase) {
@@ -739,14 +750,22 @@ public static class FastScanner {
         Dictionary<string, bool> heuristics
     ) {
         if (raw == null || raw.Length < 10) return;
-        if (raw.Length > 512 && CalcEntropy(raw) >= 7.0) {
+        if (raw.Length > 1024 && CalcEntropy(raw) >= 7.35) {
             highEntropyCount++;
         }
 
         List<string> cp = ParseConstantPool(raw);
+        bool hasMathAtan2 = false;
+        bool hasSensitivityGcd = false;
+        bool hasRandomGaussian = false;
+
         for (int i = 0; i < cp.Count; i++) {
             string s = cp[i];
             if (string.IsNullOrEmpty(s)) continue;
+
+            if (s.IndexOf("atan2", StringComparison.OrdinalIgnoreCase) >= 0 || s.IndexOf("Math.atan2", StringComparison.OrdinalIgnoreCase) >= 0) hasMathAtan2 = true;
+            if (s.IndexOf("nextGaussian", StringComparison.OrdinalIgnoreCase) >= 0 || s.IndexOf("RandomCPS", StringComparison.OrdinalIgnoreCase) >= 0) hasRandomGaussian = true;
+            if (s.IndexOf("mouseSensitivity", StringComparison.OrdinalIgnoreCase) >= 0 || s.IndexOf("gcdAimAssist", StringComparison.OrdinalIgnoreCase) >= 0 || s.IndexOf("0.6F", StringComparison.OrdinalIgnoreCase) >= 0 || s.IndexOf("8.0F", StringComparison.OrdinalIgnoreCase) >= 0) hasSensitivityGcd = true;
 
             foreach (string p in PatternSet) {
                 if (!string.IsNullOrEmpty(p) && s.IndexOf(p, StringComparison.OrdinalIgnoreCase) >= 0) {
@@ -787,6 +806,13 @@ public static class FastScanner {
             if (ReflectionSet != null && ReflectionSet.Contains(s)) {
                 reflectionScore++;
             }
+        }
+
+        if (hasMathAtan2 && hasSensitivityGcd) {
+            patterns.Add("SilentAimMatrix");
+        }
+        if (hasRandomGaussian) {
+            patterns.Add("JitterClicker");
         }
     }
 
@@ -883,7 +909,15 @@ public static class FastScanner {
     }
 }
 '@
-Add-Type -TypeDefinition $fastScannerSource
+try {
+    Add-Type -TypeDefinition $fastScannerSource
+} catch {
+    Write-Host "[ERROR] failed to compile the scanner engine -- make sure .NET Framework is installed" -ForegroundColor Red
+    Write-Host "        error: $($_.Exception.Message)" -ForegroundColor DarkRed
+    Write-Host "Press any key to exit..." -ForegroundColor DarkGray
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    exit 1
+}
 
 function Get-FileDigest {
     param([string]$Target)
@@ -1043,7 +1077,10 @@ $script:flaggedIdentifiers = @(
     "GothajClient", "Gothaj", "AstraWare", "AstralClient", "Astralux",
     "HydraClient", "LuneX", "MeiLaaPlus", "NoxxClient", "ThoriumClient", "WaterClient",
     "HCSCRCrystalOptimizer", "FlashCrystalOptimizer", "HerosAnchorOptimizer",
-    "ClientSidedCrystals", "AirAnchorMacro",
+    "ClientSidedCrystals", "AirAnchorMacro", "CrafterDupeExploit", "WindChargeBurstHelper",
+    "MaceFallMultiplierModule", "MaceDamageCalculator", "GrimStrafeBypass", "GrimAirPlaceBypass",
+    "GrimPacketQueue", "AutoMaceCombo", "MaceHitDelay", "WindChargeLaunchTiming",
+    "BreezeRodSwitchDelay", "AutoBreachDamage", "ShieldStunCalculator",
     "MixinMinecraftClient", "MixinClientPlayerEntity", "MixinClientPlayerInteractionManager",
     "MixinKeyboard", "MixinMouse", "MixinInGameHud", "MixinWorldRenderer", "MixinGameRenderer",
     "MixinLivingEntity", "MixinClientConnection", "MixinPlayerListEntry", "MixinAbstractBlockState",
@@ -1462,7 +1499,11 @@ function Scan-TargetUsnJournal {
     $folderName = (Get-Item $TargetDirectory).Name
 
     try {
-        $usnOutput = & fsutil usn readjournal $driveLetter csv 2>$null
+        $usnJob = Start-Job -ScriptBlock { param($dl) & fsutil usn readjournal $dl csv 2>$null } -ArgumentList $driveLetter
+        $usnDone = Wait-Job $usnJob -Timeout 10
+        if (-not $usnDone) { Stop-Job $usnJob; Remove-Job $usnJob -Force; return $findings }
+        $usnOutput = Receive-Job $usnJob
+        Remove-Job $usnJob -Force
         if ($usnOutput) {
             foreach ($line in $usnOutput) {
                 if ($line -match '\.jar"' -or $line -match '\.jar,') {
@@ -2359,21 +2400,25 @@ if ($mcProcess) { $targetPid = $mcProcess[0].Id }
 
 Write-Host "[1/5] checking java memory for ghost cheats..." -ForegroundColor Cyan
 if ($targetPid -gt 0) {
-    $memReport = [FastScanner]::ScanProcessComprehensive($targetPid, $modsFolder)
-    if ($memReport.UnloadedMods.Count -gt 0) {
-        foreach ($um in $memReport.UnloadedMods) {
-            $uName = [System.IO.Path]::GetFileName($um)
-            [void]$memoryDiscrepancies.Add([PSCustomObject]@{
-                PID = $targetPid
-                FileName = $uName
-                JarPath = $um
-            })
+    try {
+        $memReport = [FastScanner]::ScanProcessComprehensive($targetPid, $modsFolder)
+        if ($memReport.UnloadedMods.Count -gt 0) {
+            foreach ($um in $memReport.UnloadedMods) {
+                $uName = [System.IO.Path]::GetFileName($um)
+                [void]$memoryDiscrepancies.Add([PSCustomObject]@{
+                    PID = $targetPid
+                    FileName = $uName
+                    JarPath = $um
+                })
+            }
         }
-    }
-    if ($memReport.InjectedPEHeaders.Count -gt 0 -or $memReport.HookedExports.Count -gt 0) {
-        Write-Host "  [ALERT] memory detours or injected binary regions detected" -ForegroundColor Red
-    } else {
-        Write-Host "  memory check clean" -ForegroundColor DarkGray
+        if ($memReport.InjectedPEHeaders.Count -gt 0 -or $memReport.HookedExports.Count -gt 0) {
+            Write-Host "  [ALERT] memory detours or injected binary regions detected" -ForegroundColor Red
+        } else {
+            Write-Host "  memory check clean" -ForegroundColor DarkGray
+        }
+    } catch {
+        Write-Host "  memory scan failed or timed out, skipping" -ForegroundColor DarkYellow
     }
 } else {
     Write-Host "  no active minecraft process running, skipping live memory scan" -ForegroundColor DarkGray
